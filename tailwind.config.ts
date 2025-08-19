@@ -61,7 +61,37 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Ludo Game Colors
+				ludo: {
+					red: 'hsl(var(--ludo-red))',
+					blue: 'hsl(var(--ludo-blue))',
+					green: 'hsl(var(--ludo-green))',
+					yellow: 'hsl(var(--ludo-yellow))'
+				},
+				board: {
+					bg: 'hsl(var(--board-bg))',
+					border: 'hsl(var(--board-border))',
+					safe: 'hsl(var(--safe-zone))',
+					home: 'hsl(var(--home-zone))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-game': 'var(--gradient-game)',
+				'gradient-red': 'var(--gradient-red)',
+				'gradient-blue': 'var(--gradient-blue)',
+				'gradient-green': 'var(--gradient-green)',
+				'gradient-yellow': 'var(--gradient-yellow)'
+			},
+			boxShadow: {
+				'soft': 'var(--shadow-soft)',
+				'game': 'var(--shadow-game)',
+				'token': 'var(--shadow-token)'
+			},
+			transitionTimingFunction: {
+				'bounce-spring': 'var(--bounce-spring)',
+				'smooth': 'var(--smooth-ease)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
