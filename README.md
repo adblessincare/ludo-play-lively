@@ -1,5 +1,10 @@
 # Welcome to your Lovable project
 
+Lovable adinath.k.blessin
+Supabase adinath.k.blessin
+github adblessincare
+
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/a5b980d2-07ef-49e4-a59e-ba1756883a5e
