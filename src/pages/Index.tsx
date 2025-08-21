@@ -19,6 +19,7 @@ const Index = () => {
     isLoading,
     createRoom,
     joinRoom,
+    startGame,
     rollDice,
     setCurrentRoom
   } = useLudoGame();
@@ -191,7 +192,7 @@ const Index = () => {
                   <div className="text-center p-4">
                     <p className="text-muted-foreground mb-4">Need at least 2 players to start</p>
                     <Button
-                      onClick={() => {/* Start game logic */}}
+                      onClick={startGame}
                       disabled={players.length < 2}
                       className="bg-gradient-primary text-white"
                     >

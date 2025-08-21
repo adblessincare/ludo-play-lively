@@ -143,6 +143,27 @@ export const useLudoGame = () => {
     }
   }, []);
 
+  // Start game
+  const startGame = useCallback(async () => {
+    if (!currentRoom || players.length < 2) return;
+
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({ status: 'playing' })
+        .eq('id', currentRoom.id);
+
+      if (error) throw error;
+
+      toast.success('Game started!');
+      return true;
+    } catch (error: any) {
+      console.error('Error starting game:', error);
+      toast.error('Failed to start game');
+      return false;
+    }
+  }, [currentRoom, players.length]);
+
   // Roll dice
   const rollDice = useCallback(async () => {
     if (!currentRoom || !gameState) return;
@@ -201,6 +222,20 @@ export const useLudoGame = () => {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms',
+          filter: `id=eq.${currentRoom.id}`
+        },
+        (payload) => {
+          if (payload.new) {
+            setCurrentRoom(payload.new as GameRoom);
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -255,6 +290,7 @@ export const useLudoGame = () => {
     isLoading,
     createRoom,
     joinRoom,
+    startGame,
     rollDice,
     setCurrentRoom: (room: GameRoom | null) => setCurrentRoom(room)
   };
