@@ -1,14 +1,136 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { GameRoom, Player, GameState, PlayerColor } from "@/types/ludo";
+import { GameRoom, Player, GameState, PlayerColor, GameToken, LUDO_CONSTANTS } from "@/types/ludo";
 
 export const useLudoGame = () => {
   const [currentRoom, setCurrentRoom] = useState<GameRoom | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [gameTokens, setGameTokens] = useState<GameToken[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+
+  // Initialize game tokens for all players
+  const initializeGameTokens = useCallback((playersList: Player[]) => {
+    const tokens: GameToken[] = [];
+    
+    playersList.forEach((player) => {
+      for (let i = 1; i <= LUDO_CONSTANTS.TOKENS_PER_PLAYER; i++) {
+        tokens.push({
+          id: `${player.id}-token-${i}`,
+          playerId: player.id,
+          color: player.player_color as PlayerColor,
+          position: 0, // Start in home
+          isHome: true,
+          isFinished: false,
+          tokenNumber: i
+        });
+      }
+    });
+    
+    setGameTokens(tokens);
+    return tokens;
+  }, []);
+
+  // Get valid moves for a token
+  const getValidMoves = useCallback((token: GameToken, diceValue: number): number[] => {
+    const moves: number[] = [];
+    
+    // If token is at home, can only move with 6
+    if (token.isHome && diceValue === 6) {
+      const startPos = LUDO_CONSTANTS.HOME_POSITIONS[token.color].start;
+      moves.push(startPos);
+    }
+    
+    // If token is on board
+    if (!token.isHome && !token.isFinished) {
+      let newPosition = token.position + diceValue;
+      
+      // Check if moving into final path
+      const colorStartPos = LUDO_CONSTANTS.HOME_POSITIONS[token.color].start;
+      const completedCircle = newPosition > LUDO_CONSTANTS.BOARD_POSITIONS;
+      
+      if (completedCircle) {
+        const finalPathPos = newPosition - LUDO_CONSTANTS.BOARD_POSITIONS + LUDO_CONSTANTS.FINAL_PATH_START;
+        if (finalPathPos <= LUDO_CONSTANTS.WINNING_POSITION) {
+          moves.push(finalPathPos);
+        }
+      } else {
+        moves.push(newPosition);
+      }
+    }
+    
+    return moves;
+  }, []);
+
+  // Move token to new position
+  const moveToken = useCallback(async (tokenId: string, newPosition: number) => {
+    if (!currentRoom || !gameState) return;
+
+    try {
+      const updatedTokens = gameTokens.map(token => {
+        if (token.id === tokenId) {
+          const isMovingToBoard = token.isHome && newPosition > 0;
+          const isFinishing = newPosition === LUDO_CONSTANTS.WINNING_POSITION;
+          
+          return {
+            ...token,
+            position: newPosition,
+            isHome: newPosition === 0,
+            isFinished: isFinishing
+          };
+        }
+        return token;
+      });
+
+      // Check for captures
+      const movedToken = updatedTokens.find(t => t.id === tokenId);
+      if (movedToken && !movedToken.isHome && !movedToken.isFinished) {
+        const capturedTokens = updatedTokens.map(token => {
+          if (token.id !== tokenId && 
+              token.position === movedToken.position && 
+              token.color !== movedToken.color &&
+              !LUDO_CONSTANTS.HOME_POSITIONS[token.color].safe.includes(token.position)) {
+            toast.success(`${movedToken.color} captured ${token.color} token!`);
+            return { ...token, position: 0, isHome: true, isFinished: false };
+          }
+          return token;
+        });
+        
+        setGameTokens(capturedTokens);
+      } else {
+        setGameTokens(updatedTokens);
+      }
+
+      // Update game state in database
+      const { error } = await supabase
+        .from('game_state')
+        .update({ 
+          board_state: { tokens: updatedTokens } as any,
+          current_turn: gameState.dice_value === 6 ? gameState.current_turn : (gameState.current_turn + 1) % players.length
+        })
+        .eq('room_id', currentRoom.id);
+
+      if (error) throw error;
+
+      // Check for win condition
+      const playerTokens = updatedTokens.filter(t => t.playerId === movedToken?.playerId);
+      const finishedTokens = playerTokens.filter(t => t.isFinished);
+      
+      if (finishedTokens.length === LUDO_CONSTANTS.TOKENS_PER_PLAYER) {
+        toast.success(`${movedToken?.color} player wins!`);
+        await supabase
+          .from('game_state')
+          .update({ winner: movedToken?.playerId })
+          .eq('room_id', currentRoom.id);
+      }
+
+    } catch (error: any) {
+      console.error('Error moving token:', error);
+      toast.error('Failed to move token');
+    }
+  }, [currentRoom, gameState, gameTokens, players.length]);
 
   // Generate a 4-letter room code
   const generateRoomCode = () => {
@@ -50,14 +172,15 @@ export const useLudoGame = () => {
 
       if (playerError) throw playerError;
 
-      // Create initial game state
+      // Create initial game state with tokens
+      const initialTokens = initializeGameTokens([player as Player]);
       const { error: gameStateError } = await supabase
         .from('game_state')
         .insert({
           room_id: room.id,
           current_turn: 0,
-          board_state: {},
-          player_colors: { [player.id]: 'red' }
+          board_state: { tokens: initialTokens } as any,
+          player_colors: { [player.id]: 'red' } as any
         });
 
       if (gameStateError) throw gameStateError;
@@ -148,6 +271,16 @@ export const useLudoGame = () => {
     if (!currentRoom || players.length < 2) return;
 
     try {
+      // Initialize tokens for all players
+      const allTokens = initializeGameTokens(players);
+      
+      const { error: gameStateError } = await supabase
+        .from('game_state')
+        .update({ board_state: { tokens: allTokens } as any })
+        .eq('room_id', currentRoom.id);
+
+      if (gameStateError) throw gameStateError;
+
       const { error } = await supabase
         .from('rooms')
         .update({ status: 'playing' })
@@ -162,7 +295,7 @@ export const useLudoGame = () => {
       toast.error('Failed to start game');
       return false;
     }
-  }, [currentRoom, players.length]);
+  }, [currentRoom, players, initializeGameTokens]);
 
   // Roll dice
   const rollDice = useCallback(async () => {
@@ -218,6 +351,10 @@ export const useLudoGame = () => {
         },
         (payload) => {
           if (payload.new) {
+            const newState = payload.new as any;
+            if (newState.board_state?.tokens) {
+              setGameTokens(newState.board_state.tokens as GameToken[]);
+            }
             setGameState(payload.new as GameState);
           }
         }
@@ -272,6 +409,10 @@ export const useLudoGame = () => {
     }
 
     setGameState(data as GameState);
+    const gameData = data as any;
+    if (gameData.board_state?.tokens) {
+      setGameTokens(gameData.board_state.tokens as GameToken[]);
+    }
   }, []);
 
   // Initialize room data when room changes
@@ -287,11 +428,14 @@ export const useLudoGame = () => {
     gameState,
     players,
     currentPlayer,
+    gameTokens,
     isLoading,
     createRoom,
     joinRoom,
     startGame,
     rollDice,
+    moveToken,
+    getValidMoves,
     setCurrentRoom: (room: GameRoom | null) => setCurrentRoom(room)
   };
 };

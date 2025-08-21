@@ -1,100 +1,147 @@
 import { motion } from "framer-motion";
 import { GameToken } from "./GameToken";
-import { PlayerColor } from "@/types/ludo";
+import { PlayerColor, GameToken as GameTokenType } from "@/types/ludo";
 
 interface GameBoardProps {
   boardState: Record<string, any>;
   currentPlayer?: PlayerColor;
   onTokenClick?: (tokenId: string) => void;
+  gameTokens: GameTokenType[];
+  diceValue?: number;
 }
 
-export const GameBoard = ({ boardState, currentPlayer, onTokenClick }: GameBoardProps) => {
+// Ludo board position mapping (1-52 for main path)
+const POSITION_COORDS = {
+  // Red starting area positions (1-13 going up)
+  1: { row: 8, col: 1 }, 2: { row: 7, col: 1 }, 3: { row: 6, col: 1 }, 4: { row: 5, col: 1 }, 5: { row: 4, col: 1 },
+  6: { row: 3, col: 1 }, 7: { row: 2, col: 1 }, 8: { row: 1, col: 1 }, 9: { row: 0, col: 1 }, 10: { row: 0, col: 2 },
+  11: { row: 0, col: 3 }, 12: { row: 0, col: 4 }, 13: { row: 0, col: 5 },
+  
+  // Blue starting area positions (14-26 going right)
+  14: { row: 0, col: 6 }, 15: { row: 1, col: 7 }, 16: { row: 2, col: 7 }, 17: { row: 3, col: 7 }, 18: { row: 4, col: 7 },
+  19: { row: 5, col: 7 }, 20: { row: 6, col: 7 }, 21: { row: 7, col: 7 }, 22: { row: 8, col: 7 }, 23: { row: 9, col: 7 },
+  24: { row: 10, col: 7 }, 25: { row: 11, col: 7 }, 26: { row: 12, col: 7 },
+  
+  // Yellow positions (27-39 going down)
+  27: { row: 13, col: 7 }, 28: { row: 14, col: 7 }, 29: { row: 14, col: 6 }, 30: { row: 14, col: 5 }, 31: { row: 14, col: 4 },
+  32: { row: 14, col: 3 }, 33: { row: 14, col: 2 }, 34: { row: 14, col: 1 }, 35: { row: 14, col: 0 }, 36: { row: 13, col: 0 },
+  37: { row: 12, col: 0 }, 38: { row: 11, col: 0 }, 39: { row: 10, col: 0 },
+  
+  // Green positions (40-52 going left)
+  40: { row: 9, col: 0 }, 41: { row: 8, col: 0 }, 42: { row: 7, col: 0 }, 43: { row: 6, col: 0 }, 44: { row: 5, col: 0 },
+  45: { row: 4, col: 0 }, 46: { row: 3, col: 0 }, 47: { row: 2, col: 0 }, 48: { row: 1, col: 0 }, 49: { row: 0, col: 0 },
+  50: { row: 0, col: 1 }, 51: { row: 0, col: 2 }, 52: { row: 0, col: 3 }
+};
+
+export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens, diceValue }: GameBoardProps) => {
   const boardSize = 15; // 15x15 grid for Ludo board
   
-  // Create the Ludo board layout
-  const createBoardLayout = () => {
-        const board = Array(boardSize).fill(null).map(() => Array(boardSize).fill(null));
-        
-        // Mark different zones
-        // Home areas (corners)
-        const homeAreas = {
-          red: { startRow: 1, startCol: 1, endRow: 5, endCol: 5 },
-          green: { startRow: 1, startCol: 9, endRow: 5, endCol: 13 },
-          yellow: { startRow: 9, startCol: 9, endRow: 13, endCol: 13 },
-          blue: { startRow: 9, startCol: 1, endRow: 13, endCol: 5 }
-        };
-        
-        // Safe zones (colored paths leading to center)
-        const safeZones = [
-          // Red path (row 6, cols 1-5)
-          ...Array.from({ length: 5 }, (_, i) => ({ row: 6, col: i + 1, color: 'red' })),
-          // Green path (col 8, rows 1-5)
-          ...Array.from({ length: 5 }, (_, i) => ({ row: i + 1, col: 8, color: 'green' })),
-          // Yellow path (row 8, cols 9-13)
-          ...Array.from({ length: 5 }, (_, i) => ({ row: 8, col: i + 9, color: 'yellow' })),
-          // Blue path (col 6, rows 9-13)
-          ...Array.from({ length: 5 }, (_, i) => ({ row: i + 9, col: 6, color: 'blue' }))
-        ];
-        
-        return { board, homeAreas, safeZones };
+  // Get tokens at a specific board position
+  const getTokensAtPosition = (position: number): GameTokenType[] => {
+    return gameTokens.filter(token => token.position === position && !token.isHome);
   };
   
-  const { homeAreas, safeZones } = createBoardLayout();
+  // Get home tokens for a color
+  const getHomeTokens = (color: PlayerColor): GameTokenType[] => {
+    return gameTokens.filter(token => token.color === color && token.isHome);
+  };
   
   const getCellType = (row: number, col: number) => {
     // Check if it's a home area
-    for (const [color, area] of Object.entries(homeAreas)) {
-      if (row >= area.startRow && row <= area.endRow && 
-          col >= area.startCol && col <= area.endCol) {
-        return { type: 'home', color };
-      }
-    }
+    if (row >= 1 && row <= 5 && col >= 1 && col <= 5) return { type: 'home', color: 'red' };
+    if (row >= 1 && row <= 5 && col >= 9 && col <= 13) return { type: 'home', color: 'blue' };
+    if (row >= 9 && row <= 13 && col >= 9 && col <= 13) return { type: 'home', color: 'yellow' };
+    if (row >= 9 && row <= 13 && col >= 1 && col <= 5) return { type: 'home', color: 'green' };
     
-    // Check if it's a safe zone
-    const safeZone = safeZones.find(zone => zone.row === row && zone.col === col);
-    if (safeZone) {
-      return { type: 'safe', color: safeZone.color };
-    }
+    // Check if it's a colored path (final path to center)
+    if (row === 7 && col >= 1 && col <= 5) return { type: 'final', color: 'red' };
+    if (col === 7 && row >= 1 && row <= 5) return { type: 'final', color: 'blue' };
+    if (row === 7 && col >= 9 && col <= 13) return { type: 'final', color: 'yellow' };
+    if (col === 7 && row >= 9 && row <= 13) return { type: 'final', color: 'green' };
     
     // Check if it's the main path
-    if ((row === 0 || row === 6 || row === 8 || row === 14) && 
-        (col >= 6 && col <= 8)) {
-      return { type: 'path', color: null };
-    }
-    if ((col === 0 || col === 6 || col === 8 || col === 14) && 
-        (row >= 6 && row <= 8)) {
-      return { type: 'path', color: null };
-    }
+    if ((row === 6 || row === 8) && (col <= 5 || col >= 9)) return { type: 'path', color: null };
+    if ((col === 6 || col === 8) && (row <= 5 || row >= 9)) return { type: 'path', color: null };
     
     // Center area
-    if (row >= 6 && row <= 8 && col >= 6 && col <= 8) {
-      return { type: 'center', color: null };
-    }
+    if (row === 7 && col === 7) return { type: 'center', color: null };
+    if ((row === 6 || row === 8) && (col === 6 || col === 8)) return { type: 'center', color: null };
     
     return { type: 'empty', color: null };
   };
   
-  const getCellClass = (type: string, color: string | null) => {
-    const baseClass = "w-8 h-8 border border-board-border flex items-center justify-center relative transition-all duration-200";
+  const getCellClass = (type: string, color: string | null, row: number, col: number) => {
+    const baseClass = "w-8 h-8 border border-gray-300 flex items-center justify-center relative transition-all duration-200 cursor-pointer";
+    
+    // Check if it's a safe zone (star positions)
+    const isSafeZone = (
+      (row === 2 && col === 6) || (row === 6 && col === 2) || (row === 8 && col === 12) ||
+      (row === 12 && col === 8) || (row === 6 && col === 6) || (row === 8 && col === 8)
+    );
     
     switch (type) {
       case 'home':
-        return `${baseClass} bg-gradient-${color} opacity-20 hover:opacity-30`;
-      case 'safe':
-        return `${baseClass} bg-gradient-${color} opacity-40 shadow-soft`;
+        return `${baseClass} bg-gradient-${color}/20 border-${color}-300 hover:bg-gradient-${color}/30`;
+      case 'final':
+        return `${baseClass} bg-gradient-${color}/40 border-${color}-400 shadow-md`;
       case 'path':
-        return `${baseClass} bg-board-bg hover:bg-board-safe`;
+        return `${baseClass} bg-white border-gray-400 hover:bg-gray-50 ${isSafeZone ? 'bg-yellow-100 border-yellow-400' : ''}`;
       case 'center':
-        return `${baseClass} bg-gradient-game shadow-game`;
+        return `${baseClass} bg-gradient-primary/30 border-primary shadow-lg`;
       default:
-        return `${baseClass} bg-background`;
+        return `${baseClass} bg-gray-100 border-gray-300`;
     }
+  };
+
+  const renderHomeArea = (color: PlayerColor, row: number, col: number) => {
+    const homeTokens = getHomeTokens(color);
+    const isMainHomeSquare = (
+      (color === 'red' && row === 3 && col === 3) ||
+      (color === 'blue' && row === 3 && col === 11) ||
+      (color === 'yellow' && row === 11 && col === 11) ||
+      (color === 'green' && row === 11 && col === 3)
+    );
+    
+    if (!isMainHomeSquare) return null;
+    
+    return (
+      <div className={`absolute inset-1 bg-gradient-${color} rounded-lg border-2 border-${color}-400 grid grid-cols-2 gap-1 p-1`}>
+        {[0, 1, 2, 3].map((index) => {
+          const token = homeTokens[index];
+          return (
+            <div
+              key={index}
+              className={`w-full h-full rounded-full border flex items-center justify-center ${
+                token 
+                  ? `bg-gradient-${color} border-white shadow-md cursor-pointer hover:scale-110 transition-transform` 
+                  : 'border-dashed border-gray-400 bg-transparent'
+              }`}
+              onClick={() => token && onTokenClick?.(token.id)}
+            >
+              {token && (
+                <div className="w-3 h-3 bg-white rounded-full opacity-80" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Find position number for coordinates
+  const getPositionNumber = (row: number, col: number): number => {
+    for (const [pos, coords] of Object.entries(POSITION_COORDS)) {
+      if (coords.row === row && coords.col === col) {
+        return parseInt(pos);
+      }
+    }
+    return 0;
   };
   
   return (
     <div className="flex items-center justify-center p-8">
       <motion.div 
-        className="grid gap-0 bg-card rounded-3xl p-6 shadow-game border border-board-border"
+        className="grid gap-0 bg-gradient-to-br from-amber-50 to-amber-100 rounded-3xl p-6 shadow-2xl border-4 border-amber-200"
         style={{ 
           gridTemplateColumns: 'repeat(15, 2rem)',
           gridTemplateRows: 'repeat(15, 2rem)'
@@ -107,27 +154,51 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick }: GameBoard
           Array.from({ length: boardSize }, (_, col) => {
             const cellInfo = getCellType(row, col);
             const cellKey = `${row}-${col}`;
+            const position = getPositionNumber(row, col);
+            const tokensAtPosition = getTokensAtPosition(position);
             
             return (
               <motion.div
                 key={cellKey}
-                className={getCellClass(cellInfo.type, cellInfo.color)}
+                className={getCellClass(cellInfo.type, cellInfo.color, row, col)}
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.1 }}
+                onClick={() => position && onTokenClick?.(position.toString())}
               >
-                {/* Render tokens if any exist at this position */}
-                {boardState[cellKey] && (
+                {/* Render home areas */}
+                {cellInfo.type === 'home' && renderHomeArea(cellInfo.color as PlayerColor, row, col)}
+                
+                {/* Render tokens on path squares */}
+                {tokensAtPosition.map((token, index) => (
                   <GameToken
-                    color={boardState[cellKey].color}
-                    position={cellKey}
-                    isActive={currentPlayer === boardState[cellKey].color}
-                    onClick={() => onTokenClick?.(boardState[cellKey].id)}
+                    key={token.id}
+                    color={token.color}
+                    position={position.toString()}
+                    isActive={currentPlayer === token.color}
+                    onClick={() => onTokenClick?.(token.id)}
+                    className={`absolute ${index > 0 ? `translate-x-${index} translate-y-${index}` : ''}`}
                   />
+                ))}
+                
+                {/* Center triangle */}
+                {row === 7 && col === 7 && (
+                  <div className="w-6 h-6 bg-gradient-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  </div>
                 )}
                 
-                {/* Special markers for starting positions */}
-                {cellInfo.type === 'home' && (
-                  <div className={`w-3 h-3 rounded-full bg-gradient-${cellInfo.color} shadow-token`} />
+                {/* Safe zone stars */}
+                {((row === 2 && col === 6) || (row === 6 && col === 2) || (row === 8 && col === 12) || (row === 12 && col === 8)) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-3 h-3 bg-yellow-400 rounded-full border border-yellow-600" />
+                  </div>
+                )}
+                
+                {/* Position numbers for debugging */}
+                {position > 0 && (
+                  <div className="absolute top-0 left-0 text-xs text-gray-500 leading-none">
+                    {position}
+                  </div>
                 )}
               </motion.div>
             );

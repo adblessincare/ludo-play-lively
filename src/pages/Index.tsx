@@ -16,11 +16,14 @@ const Index = () => {
     gameState,
     players,
     currentPlayer,
+    gameTokens,
     isLoading,
     createRoom,
     joinRoom,
     startGame,
     rollDice,
+    moveToken,
+    getValidMoves,
     setCurrentRoom
   } = useLudoGame();
 
@@ -67,6 +70,39 @@ const Index = () => {
   const leaveRoom = () => {
     setCurrentRoom(null);
     toast.info("Left the room");
+  };
+
+  const handleTokenClick = (tokenId: string) => {
+    if (!gameState || !currentPlayer) return;
+    
+    // Check if it's the current player's turn
+    const currentTurnPlayer = players[gameState.current_turn];
+    if (currentTurnPlayer?.id !== currentPlayer.id) {
+      toast.error("It's not your turn!");
+      return;
+    }
+    
+    // Check if dice has been rolled
+    if (!gameState.dice_value) {
+      toast.error("Roll the dice first!");
+      return;
+    }
+    
+    // Find the token and get valid moves
+    const token = gameTokens.find(t => t.id === tokenId);
+    if (!token || token.color !== currentPlayer.player_color) {
+      toast.error("Not your token!");
+      return;
+    }
+    
+    const validMoves = getValidMoves(token, gameState.dice_value);
+    if (validMoves.length === 0) {
+      toast.error("No valid moves!");
+      return;
+    }
+    
+    // Move to the first valid position (in a real game, player would choose)
+    moveToken(tokenId, validMoves[0]);
   };
 
   // Show room creation/joining screen if not in a room
@@ -244,9 +280,9 @@ const Index = () => {
               <GameBoard
                 boardState={gameState?.board_state || {}}
                 currentPlayer={currentPlayer?.player_color}
-                onTokenClick={(tokenId) => {
-                  toast.info(`Clicked token: ${tokenId}`);
-                }}
+                gameTokens={gameTokens}
+                diceValue={diceValue}
+                onTokenClick={handleTokenClick}
               />
             </motion.div>
           )}
