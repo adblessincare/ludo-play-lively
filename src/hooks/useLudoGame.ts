@@ -64,6 +64,12 @@ export const useLudoGame = () => {
     return moves;
   }, []);
 
+  // Helper to check if current player has any valid moves for the rolled dice
+  const hasAnyValidMove = useCallback((playerId: string, diceValue: number) => {
+    const tokens = gameTokens.filter(t => t.playerId === playerId);
+    return tokens.some(token => getValidMoves(token, diceValue).length > 0);
+  }, [gameTokens, getValidMoves]);
+
   // Move token to new position
   const moveToken = useCallback(async (tokenId: string, newPosition: number) => {
     if (!currentRoom || !gameState) return;
@@ -108,7 +114,8 @@ export const useLudoGame = () => {
         .from('game_state')
         .update({ 
           board_state: { tokens: updatedTokens } as any,
-          current_turn: gameState.dice_value === 6 ? gameState.current_turn : (gameState.current_turn + 1) % players.length
+          current_turn: gameState.dice_value === 6 ? gameState.current_turn : (gameState.current_turn + 1) % players.length,
+          dice_value: null
         })
         .eq('room_id', currentRoom.id);
 
@@ -308,6 +315,12 @@ export const useLudoGame = () => {
       return;
     }
 
+    // Prevent re-rolling until a move is made (enforce move-first rule)
+    if (gameState.dice_value) {
+      toast.error('Move a token before rolling again');
+      return;
+    }
+
     const diceValue = Math.floor(Math.random() * 6) + 1;
     
     try {
@@ -320,13 +333,27 @@ export const useLudoGame = () => {
 
       if (error) throw error;
 
-      toast.success(`You rolled ${diceValue}!`);
+      // Auto-pass if no valid moves available for this dice
+      const canMove = hasAnyValidMove(currentTurnPlayer.id, diceValue);
+      if (!canMove) {
+        await supabase
+          .from('game_state')
+          .update({ 
+            dice_value: null,
+            current_turn: (gameState.current_turn + 1) % players.length
+          })
+          .eq('room_id', currentRoom.id);
+        toast.info('No valid moves. Turn passed.');
+      } else {
+        toast.success(`You rolled ${diceValue}!`);
+      }
+
       return diceValue;
     } catch (error: any) {
       console.error('Error rolling dice:', error);
       toast.error('Failed to roll dice');
     }
-  }, [currentRoom, gameState, currentPlayer, players]);
+  }, [currentRoom, gameState, currentPlayer, players, hasAnyValidMove]);
 
   // Set up real-time subscriptions
   useEffect(() => {

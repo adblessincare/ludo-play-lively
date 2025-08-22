@@ -221,7 +221,11 @@ const Index = () => {
                     value={gameState?.dice_value || diceValue}
                     onRoll={handleRollDice}
                     isRolling={isRolling}
-                    disabled={gameState?.current_turn !== players.findIndex(p => p.id === currentPlayer?.id) || isRolling}
+                    disabled={
+                      isRolling ||
+                      gameState?.current_turn !== players.findIndex(p => p.id === currentPlayer?.id) ||
+                      (!!gameState?.dice_value && gameState?.current_turn === players.findIndex(p => p.id === currentPlayer?.id))
+                    }
                   />
                 )}
                 {currentRoom.status === 'waiting' && (

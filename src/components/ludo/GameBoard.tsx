@@ -182,7 +182,6 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
                 className={getCellClass(cellInfo.type, cellInfo.color, row, col)}
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.1 }}
-                onClick={() => position && onTokenClick?.(position.toString())}
               >
                 {/* Render home areas */}
                 {cellInfo.type === 'home' && renderHomeArea(cellInfo.color as PlayerColor, row, col)}
