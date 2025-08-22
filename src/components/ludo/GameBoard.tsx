@@ -71,9 +71,9 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
   };
   
   const getCellClass = (type: string, color: string | null, row: number, col: number) => {
-    const baseClass = "w-8 h-8 border border-gray-300 flex items-center justify-center relative transition-all duration-200 cursor-pointer";
+    const baseClass = "w-10 h-10 border border-gray-400 flex items-center justify-center relative transition-all duration-200";
     
-    // Check if it's a safe zone (star positions)
+    // Check if it's a safe zone (star positions)  
     const isSafeZone = (
       (row === 2 && col === 6) || (row === 6 && col === 2) || (row === 8 && col === 12) ||
       (row === 12 && col === 8) || (row === 6 && col === 6) || (row === 8 && col === 8)
@@ -81,13 +81,25 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
     
     switch (type) {
       case 'home':
-        return `${baseClass} bg-gradient-${color}/20 border-${color}-300 hover:bg-gradient-${color}/30`;
+        const homeColors = {
+          red: 'bg-red-200 border-red-400',
+          blue: 'bg-blue-200 border-blue-400', 
+          green: 'bg-green-200 border-green-400',
+          yellow: 'bg-yellow-200 border-yellow-400'
+        };
+        return `${baseClass} ${homeColors[color as keyof typeof homeColors] || 'bg-gray-200'}`;
       case 'final':
-        return `${baseClass} bg-gradient-${color}/40 border-${color}-400 shadow-md`;
+        const finalColors = {
+          red: 'bg-red-300 border-red-500',
+          blue: 'bg-blue-300 border-blue-500',
+          green: 'bg-green-300 border-green-500', 
+          yellow: 'bg-yellow-300 border-yellow-500'
+        };
+        return `${baseClass} ${finalColors[color as keyof typeof finalColors] || 'bg-gray-300'}`;
       case 'path':
-        return `${baseClass} bg-white border-gray-400 hover:bg-gray-50 ${isSafeZone ? 'bg-yellow-100 border-yellow-400' : ''}`;
+        return `${baseClass} bg-white border-gray-400 hover:bg-gray-50 ${isSafeZone ? 'bg-yellow-100 border-yellow-500' : ''}`;
       case 'center':
-        return `${baseClass} bg-gradient-primary/30 border-primary shadow-lg`;
+        return `${baseClass} bg-gradient-to-br from-red-200 via-blue-200 to-green-200 border-gray-500 shadow-lg`;
       default:
         return `${baseClass} bg-gray-100 border-gray-300`;
     }
@@ -104,22 +116,29 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
     
     if (!isMainHomeSquare) return null;
     
+    const colorClasses = {
+      red: 'bg-red-400 border-red-600',
+      blue: 'bg-blue-400 border-blue-600',
+      green: 'bg-green-400 border-green-600', 
+      yellow: 'bg-yellow-400 border-yellow-600'
+    };
+
     return (
-      <div className={`absolute inset-1 bg-gradient-${color} rounded-lg border-2 border-${color}-400 grid grid-cols-2 gap-1 p-1`}>
+      <div className={`absolute inset-1 ${colorClasses[color]} rounded-lg border-2 grid grid-cols-2 gap-1 p-1`}>
         {[0, 1, 2, 3].map((index) => {
           const token = homeTokens[index];
           return (
             <div
               key={index}
-              className={`w-full h-full rounded-full border flex items-center justify-center ${
+              className={`w-full h-full rounded-full border-2 flex items-center justify-center ${
                 token 
-                  ? `bg-gradient-${color} border-white shadow-md cursor-pointer hover:scale-110 transition-transform` 
-                  : 'border-dashed border-gray-400 bg-transparent'
+                  ? `${colorClasses[color]} border-white shadow-md cursor-pointer hover:scale-110 transition-transform` 
+                  : 'border-dashed border-gray-500 bg-white/50'
               }`}
               onClick={() => token && onTokenClick?.(token.id)}
             >
               {token && (
-                <div className="w-3 h-3 bg-white rounded-full opacity-80" />
+                <div className="w-3 h-3 bg-white rounded-full" />
               )}
             </div>
           );
@@ -139,12 +158,12 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
   };
   
   return (
-    <div className="flex items-center justify-center p-8">
+    <div className="flex items-center justify-center p-4">
       <motion.div 
-        className="grid gap-0 bg-gradient-to-br from-amber-50 to-amber-100 rounded-3xl p-6 shadow-2xl border-4 border-amber-200"
+        className="grid gap-1 bg-white rounded-3xl p-4 shadow-2xl border-4 border-gray-300"
         style={{ 
-          gridTemplateColumns: 'repeat(15, 2rem)',
-          gridTemplateRows: 'repeat(15, 2rem)'
+          gridTemplateColumns: 'repeat(15, 2.5rem)',
+          gridTemplateRows: 'repeat(15, 2.5rem)'
         }}
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}

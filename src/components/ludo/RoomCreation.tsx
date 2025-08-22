@@ -118,11 +118,11 @@ export const RoomCreation = ({ onCreateRoom, onJoinRoom, isLoading = false }: Ro
                   Room Code
                 </label>
                 <Input
-                  placeholder="Enter 4-letter room code"
+                  placeholder="Enter 6-digit room code"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                   className="border-board-border focus:ring-primary/50 font-mono text-center text-lg"
-                  maxLength={4}
+                  maxLength={6}
                 />
               </motion.div>
             )}
@@ -159,7 +159,7 @@ export const RoomCreation = ({ onCreateRoom, onJoinRoom, isLoading = false }: Ro
             {/* Info Text */}
             <div className="text-center text-sm text-muted-foreground">
               {mode === "create" 
-                ? "You'll get a 4-letter code to share with friends"
+                ? "You'll get a 6-digit code to share with friends"
                 : "Ask your friend for the room code"
               }
             </div>

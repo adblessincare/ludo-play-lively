@@ -132,10 +132,10 @@ export const useLudoGame = () => {
     }
   }, [currentRoom, gameState, gameTokens, players.length]);
 
-  // Generate a 4-letter room code
+  // Generate a 6-digit alphanumeric room code
   const generateRoomCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   };
 
   // Create a new game room
@@ -297,9 +297,16 @@ export const useLudoGame = () => {
     }
   }, [currentRoom, players, initializeGameTokens]);
 
-  // Roll dice
+  // Roll dice (only current player can roll)
   const rollDice = useCallback(async () => {
-    if (!currentRoom || !gameState) return;
+    if (!currentRoom || !gameState || !currentPlayer) return;
+
+    // Check if it's current player's turn
+    const currentTurnPlayer = players[gameState.current_turn];
+    if (!currentTurnPlayer || currentTurnPlayer.id !== currentPlayer.id) {
+      toast.error("It's not your turn!");
+      return;
+    }
 
     const diceValue = Math.floor(Math.random() * 6) + 1;
     
@@ -307,20 +314,19 @@ export const useLudoGame = () => {
       const { error } = await supabase
         .from('game_state')
         .update({ 
-          dice_value: diceValue,
-          current_turn: (gameState.current_turn + 1) % players.length
+          dice_value: diceValue
         })
         .eq('room_id', currentRoom.id);
 
       if (error) throw error;
 
-      toast.success(`Rolled ${diceValue}!`);
+      toast.success(`You rolled ${diceValue}!`);
       return diceValue;
     } catch (error: any) {
       console.error('Error rolling dice:', error);
       toast.error('Failed to roll dice');
     }
-  }, [currentRoom, gameState, players.length]);
+  }, [currentRoom, gameState, currentPlayer, players]);
 
   // Set up real-time subscriptions
   useEffect(() => {

@@ -218,10 +218,10 @@ const Index = () => {
               <CardContent className="flex justify-center">
                 {currentRoom.status === 'playing' && (
                   <Dice
-                    value={diceValue}
+                    value={gameState?.dice_value || diceValue}
                     onRoll={handleRollDice}
                     isRolling={isRolling}
-                    disabled={gameState?.current_turn !== players.findIndex(p => p.id === currentPlayer?.id)}
+                    disabled={gameState?.current_turn !== players.findIndex(p => p.id === currentPlayer?.id) || isRolling}
                   />
                 )}
                 {currentRoom.status === 'waiting' && (
@@ -229,10 +229,13 @@ const Index = () => {
                     <p className="text-muted-foreground mb-4">Need at least 2 players to start</p>
                     <Button
                       onClick={startGame}
-                      disabled={players.length < 2}
+                      disabled={players.length < 2 || isLoading}
                       className="bg-gradient-primary text-white"
                     >
-                      Start Game
+                      {players.length < 2 
+                        ? `Need ${2 - players.length} more player${2 - players.length > 1 ? 's' : ''}`
+                        : 'Start Game'
+                      }
                     </Button>
                   </div>
                 )}
