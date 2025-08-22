@@ -38,7 +38,10 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
   
   // Get tokens at a specific board position
   const getTokensAtPosition = (position: number): GameTokenType[] => {
-    return gameTokens.filter(token => token.position === position && !token.isHome);
+    const tokens = gameTokens.filter(token => 
+      token.position === position && !token.isHome && !token.isFinished
+    );
+    return tokens;
   };
   
   // Get home tokens for a color
@@ -187,14 +190,14 @@ export const GameBoard = ({ boardState, currentPlayer, onTokenClick, gameTokens,
                 {cellInfo.type === 'home' && renderHomeArea(cellInfo.color as PlayerColor, row, col)}
                 
                 {/* Render tokens on path squares */}
-                {tokensAtPosition.map((token, index) => (
+                {position > 0 && tokensAtPosition.length > 0 && tokensAtPosition.map((token, index) => (
                   <GameToken
                     key={token.id}
                     color={token.color}
                     position={position.toString()}
                     isActive={currentPlayer === token.color}
                     onClick={() => onTokenClick?.(token.id)}
-                    className={`absolute ${index > 0 ? `translate-x-${index} translate-y-${index}` : ''}`}
+                    className={`absolute inset-0 m-auto ${index > 0 ? `translate-x-${Math.min(index, 2)} translate-y-${Math.min(index, 2)}` : ''}`}
                   />
                 ))}
                 
